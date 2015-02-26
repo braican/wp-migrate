@@ -35,36 +35,43 @@ date_default_timezone_set("America/New_York");
 $timestamp = date('Ymd-His');
 
 // db name
-echo "What is the name of the mysql database?\n";
+echo "What is the name of the mysql database? ";
 $mysql_db = prompt();
 while(!$mysql_db){
-    echo "We need a database.\n";
+    echo "We need a database: ";
     $mysql_db = prompt();
 }
 
 // db user
-echo "We also need the username...\n";
+echo "We also need the username: ";
 $mysql_username = prompt();
 while(!$mysql_username){
-    echo "We need a username.\n";
+    echo "We need a username: ";
     $mysql_username = prompt();
 }
 
 // db password
-echo "and that users password...\n";
-$mysql_password = prompt();
+echo "and that users password: ";
+$mysql_password = prompt_silent();
 while(!$mysql_password){
-    echo "We need a password.\n";
-    $mysql_password = prompt();
+    echo "We need a password: ";
+    $mysql_password = prompt_silent();
 }
 
 $mysql_dump_name = "$mysql_db-$timestamp.sql";
 
 exec("mysqldump -u $mysql_username -p$mysql_password $mysql_db > $mysql_dump_name", $output, $success);
 
+echo "\n";
+
 if($success != 0){
     unlink($mysql_dump_name);
-    die("Something went wrong.");
+    echo "--------ERROR--------\n";
+    print_r($success);
+    echo "\n";
+    print_r($output);
+    echo "\n";
+    die("Something went wrong. Exiting.\n");
 } else {
     echo "Dumped\n";
 }
@@ -73,18 +80,18 @@ echo "Now we're going to do a search and replace on that database, so the site w
 echo "Make sure that this stuff is correct, since there's no good way to error check this.\n";
 
 // local domain
-echo "What is the local site domain?\n";
+echo "What is the local site domain? ";
 $local_domain = prompt();
 while(!$local_domain){
-    echo "We need a local domain.\n";
+    echo "We need a local domain: ";
     $local_domain = prompt();
 }
 
 // remote domain
-echo "What is the domain of the site to which you're importing this?\n";
+echo "What is the domain of the site to which you're importing this? ";
 $remote_domain = prompt();
 while(!$remote_domain){
-    echo "We need a remote domain.\n";
+    echo "We need a remote domain: ";
     $remote_domain = prompt();
 }
 
@@ -95,6 +102,33 @@ $file_contents = str_replace($local_domain, $remote_domain, $file_contents);
 file_put_contents($mysql_dump_name, $file_contents);
 
 exit("Domains updated\n");
+
+
+function prompt_silent($prompt = "") {
+  if (preg_match('/^win/i', PHP_OS)) {
+    $vbscript = sys_get_temp_dir() . 'prompt_password.vbs';
+    file_put_contents(
+      $vbscript, 'wscript.echo(InputBox("'
+      . addslashes($prompt)
+      . '", "", "password here"))');
+    $command = "cscript //nologo " . escapeshellarg($vbscript);
+    $password = rtrim(shell_exec($command));
+    unlink($vbscript);
+    return $password;
+  } else {
+    $command = "/usr/bin/env bash -c 'echo OK'";
+    if (rtrim(shell_exec($command)) !== 'OK') {
+      trigger_error("Can't invoke bash");
+      return;
+    }
+    $command = "/usr/bin/env bash -c 'read -s -p \""
+      . addslashes($prompt)
+      . "\" mypassword && echo \$mypassword'";
+    $password = rtrim(shell_exec($command));
+    echo "\n";
+    return $password;
+  }
+}
 
 
 
